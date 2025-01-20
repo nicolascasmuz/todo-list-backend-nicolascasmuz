@@ -2,7 +2,7 @@ import { firestore } from "../../lib/firestore";
 
 const collection = firestore.collection("tasks");
 
-export class Task {
+class Task {
   ref: FirebaseFirestore.DocumentReference;
   data: any;
   constructor(id) {
@@ -15,16 +15,44 @@ export class Task {
   async push() {
     this.ref.update(this.data);
   }
-  static async findByEmail(email: string) {
-    const result = await collection.where("email", "==", email).get();
+  static async createTask(body) {
+    const result = await collection.where("email", "==", body.email).get();
 
-    if (result.docs.length) {
-      const firstDoc = result.docs[0];
-      const newAuth = new Task(firstDoc.id);
-      newAuth.data = firstDoc.data();
-      return newAuth;
+    if (!result.docs.length) {
+      const newDoc = await collection.add(body);
+      const docData = await newDoc.get();
+      return docData.data();
     } else {
-      null;
+      return null;
     }
   }
+  static async pushTask(body) {
+    const result = await collection.where("email", "==", body.email).get();
+
+    const firstDoc = result.docs[0];
+    const docData = firstDoc.data();
+    const docRef = firstDoc.ref;
+
+    let tasks: Array<object> = docData.tasks;
+    tasks.push(body.tasks[0]);
+
+    const data = {
+      email: docData.email,
+      tasks,
+    };
+
+    await docRef.update(data);
+    const updatedData = await docRef.get();
+    return updatedData.data();
+  }
+  static async getTasks(email) {
+    const result = await collection.where("email", "==", email).get();
+
+    const firstDoc = result.docs[0];
+    const docData = firstDoc.data();
+
+    return docData.tasks;
+  }
 }
+
+export { Task };
